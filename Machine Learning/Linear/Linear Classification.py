@@ -12,6 +12,7 @@
 import numpy as np
 import numpy.random as rand
 import matplotlib.pyplot as plot
+from itertools import izip
 %matplotlib inline
 
 # <markdowncell>
@@ -23,7 +24,7 @@ import matplotlib.pyplot as plot
 size = 20
 
 # number
-n = 400
+n = 400*2
 
 xspace = np.linspace(0, size);
 
@@ -102,7 +103,7 @@ class Perceptron(object):
         # In Sample Error (Ein) = Correctly misclassified / Total
         outputs = map(self.hypothesis, self.Xs)
         mistakes = map(lambda a: a[0] == a[1],
-                   zip(outputs, self.Ys)
+                   izip(outputs, self.Ys)
                    ).count(False)
         return float(mistakes)/self.n
         
@@ -133,7 +134,7 @@ percy.error()
 # <codecell>
 
 percy = Perceptron(trainingset)
-percy.train(1000)
+percy.train(300)
 g = percy.linear_hypothesis()
 plot.plot(xspace, g(xspace), 'blue')
 display()
@@ -206,9 +207,73 @@ for i in xrange(100):
     plot.plot(i*10, pocket.error(), "bo")
 pocket.error()
 
+# <markdowncell>
+
+# #Multinomial Linear Classification
+# What if we have more than one class? I'm not going to explain this, but I put in a lot of comments.
+
 # <codecell>
 
+m = 50
+classes = 3 
+N = classes*m
+inputs = np.vstack((np.random.randn(m, 2)+[3, 2], np.random.randn(m, 2)+[2,-2], np.random.randn(m, 2)-[2,0]))
+X = np.hstack((np.ones((N,1)), inputs))
+Y = np.vstack((np.zeros((m,1)), np.ones((m,1)), 2*np.ones((m,1)))).ravel()
 
 # <codecell>
 
+class MultiClassifier(object):
+    """Linear classifier for k classes""" 
+    def __init__(self, k):
+        self.k = k
+
+    def train(self, X, Y, rate=2, iterations=100):
+        w = np.zeros((self.k, X.ndim+1))         # initialize weight matrix at 0
+        for i in range(0, iterations):           # For t in every iteration
+            grad = np.zeros((self.k, X.ndim+1))  # initialize a 3x3 gradient
+            for x, y in izip(X, Y):              # go through every input-output pair
+                exps = np.exp(w.dot(x))          # e^(xw)
+                likelihood = exps[y] / np.sum(exps)  # this the softmax function, a probability distribution
+                grad[y, :] += x - x*likelihood
+                # analogous to self.weights = self.weights + self.Ys[i]*self.Xs[i]
+            w = w + rate*grad/float(N)           # update weights
+        self.weights = w
+        
+    def classify(self, x):
+        return np.argmax(self.weights.dot(x))
+    
+    def error(self, X, Y):
+        # Calculate error
+        errors = 0.0
+        total = len(X)
+        for x, y in izip(X, Y):
+            if self.classify(x) != y:
+                errors += 1
+        return errors / total
+    
+classifier = MultiClassifier(3)
+classifier.train(X, Y)
+
+# <codecell>
+
+from matplotlib.colors import ListedColormap
+
+cmap = ListedColormap(['#FFAAAA', '#AAAAFF', '#AAFFAA'])
+
+x_min, x_max = X[:, 1].min() - 0.5, X[:, 1].max() + 0.5
+y_min, y_max = X[:, 2].min() - 0.5, X[:, 2].max() + 0.5
+h = 0.02 # step
+xx, yy = np.meshgrid(np.arange(x_min, x_max, h), np.arange(y_min, y_max, h))
+X_mesh = np.c_[np.ones((xx.size, 1)), xx.ravel(), yy.ravel()]
+
+cells = np.array([classifier.classify(X_mesh[i, :]) for i in range(0, xx.size)]).reshape(xx.shape)
+
+plot.figure()
+plot.pcolormesh(xx, yy, cells, cmap=cmap)
+plot.axis([np.min(X[:, 1]), np.max(X[:, 1]), np.min(X[:, 2]), np.max(X[:, 2])])
+plot.plot(X[2*m:, 1], X[2*m:, 2], 'go')
+plot.plot(X[0:m-1, 1], X[0:m-1, 2], 'ro')
+plot.plot(X[m:2*m-1, 1], X[m:2*m-1,   2], 'bo')
+plot.title("Error Rate %f" % classifier.error(X, Y))
 
