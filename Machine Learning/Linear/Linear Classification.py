@@ -235,9 +235,10 @@ class MultiClassifier(object):
             for x, y in izip(X, Y):              # go through every input-output pair
                 exps = np.exp(w.dot(x))          # e^(xw)
                 likelihood = exps[y] / np.sum(exps)  # this the softmax function, a probability distribution
-                grad[y, :] += x - x*likelihood
+                # update the gradient of the probability grad_y := grad_y + x(1-P(y|x))  
+                grad[y, :] += x - x*likelihood  
                 # analogous to self.weights = self.weights + self.Ys[i]*self.Xs[i]
-            w = w + rate*grad/float(N)           # update weights
+            w = w + rate*grad/float(N)           # update weights with gradient descent
         self.weights = w
         
     def classify(self, x):
