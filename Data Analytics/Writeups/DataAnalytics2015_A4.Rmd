@@ -1,0 +1,97 @@
+---
+title: "NY Housing"
+output: word_document
+---
+
+**1.a** I plan on looking at how price is determined using a multivariate regression taking real estate data into account. The features I want to take into account are gross square feet, the neighborhood, and building class. I also want to look at the relationship of sale-date and price across the entire dataset to identify patterns in the macroeconomic housing market. A logarithmic scale makes the price more manageable.
+
+
+```{r echo=FALSE}
+bronx <- read.csv("~/data/data/rollingsales_bronx.csv")
+convertCurrency <- function(currency) {
+  currency1 <- sub('$','',as.character(currency),fixed=TRUE)
+  currency2 <- as.numeric(gsub('\\,','',as.character(currency1))) 
+  currency2
+}
+bronx <- read.csv("~/data/data/rollingsales_bronx.csv")
+bronx$price <- convertCurrency(bronx$SALE.PRICE)
+bronx$sq <- as.numeric(bronx$GROSS.SQUARE.FEET)
+bronx <- unique(bronx[which(bronx$sq>0 & bronx$price>10000),])
+bronx$lsq <-as.numeric(gsub(",","", bronx$LAND.SQUARE.FEET))
+bronx$SALE.DATE <- as.Date(gsub("[^]:digit:]]","",bronx$SALE.DATE))
+bronx$YEAR.BUILT <- as.numeric(gsub("[^]:digit:]]","",bronx$YEAR.BUILT))
+bronx$NEIGHBORHOOD <- as.factor(bronx$NEIGHBORHOOD)
+BUILDING.CLASS.CATEGORY <- as.factor(bronx$BUILDING.CLASS.CATEGORY)
+```
+
+## Exploration
+
+In the exploration, I looked at the distributions of price and square-foot variables and tentavely tested for a relationship. I decided to use a log-scale for price. I also looked at the log of sale price over time.
+
+```{r}
+summary(bronx$price)
+summary(bronx$sq)
+plot(log(bronx$sq), log(bronx$price))
+m1<-lm(log(bronx$price)~log(bronx$sq))
+summary(m1)
+plot(log(bronx$sq), log(bronx$price))
+abline(m1,col="red",lwd=2) 
+plot(resid(m1))
+bronx$NEIGHBORHOOD <- as.numeric(bronx$NEIGHBORHOOD)
+bronx$BUILDING.CLASS.CATEGORY <- as.numeric(bronx$BUILDING.CLASS.CATEGORY)
+summary(m1)
+plot(log(bronx$sq), log(bronx$price))
+abline(m1,col="red",lwd=2) 
+plot(resid(m1))
+plot(bronx$SALE.DATE, bronx$price)
+plot(bronx$SALE.DATE, log(bronx$price))
+```
+
+**1.b.** 
+
+It is necessary to clean the data. Currency needs to be converted to a numeric type, as does square feet. It is necessary to filter out 0 price and 0 square feet observations. Neighborhood and building category need to be treated as factors.
+
+
+    convertCurrency <- function(currency) {
+      currency1 <- sub('$','',as.character(currency),fixed=TRUE)
+      currency2 <- as.numeric(gsub('\\,','',as.character(currency1))) 
+      currency2
+    }
+    bronx <- unique(read.csv("~/data/data/rollingsales_bronx.csv"))
+    bronx <- bronx[which(bronx$sq>0 & bronx$sq>0 & bronx$price>10000),]
+    bronx$price <- convertCurrency(bronx$SALE.PRICE)
+    bronx$sq <- as.numeric(bronx$GROSS.SQUARE.FEET)
+    bronx$lsq <-as.numeric(gsub(",","", bronx$LAND.SQUARE.FEET))
+    bronx$SALE.DATE <- as.Date(gsub("[^]:digit:]]","",bronx$SALE.DATE))
+    bronx$YEAR.BUILT <- as.numeric(gsub("[^]:digit:]]","",bronx$YEAR.BUILT))
+    bronx$NEIGHBORHOOD <- as.factor(bronx$NEIGHBORHOOD)
+
+```{r}
+m1<-lm(log(bronx$price)~bronx$sq+factor(bronx$BUILDING.CLASS.CATEGORY)+factor(bronx$NEIGHBORHOOD))
+plot(resid(m1))
+summary(m1)
+```
+
+Our adjusted R-squared is 0.5249, meaning this model explains more than half of the variance in sale price. According to the p-value (p-value < 2.2e-16) this model is highly significant. Many of the building-class coefficients are not significant, but some are highly significant.
+
+**2. a**
+
+## Predicted prices
+```{r echo=FALSE}
+plot(log(bronx$price))
+points(predict.lm(m1, bronx), col="red")
+```
+
+The predicted prices look pretty good. The model captured the pattern around the 2000 index very well. A local model would be better at explaining the outliers.
+
+**2. b**  The adjusted R-squared is good, and the model is highly significant (p-value < 2.2e-16). Not all the building classifications are significant.
+
+    Residual standard error: 0.7401 on 3376 degrees of freedom
+    Multiple R-squared:  0.5343, Adjusted R-squared:  0.5249 
+    F-statistic: 56.97 on 68 and 3376 DF,  p-value: < 2.2e-16
+
+You can see that the model fits the data decently from the adjusted R-squared. The F-statistic is an appropriate test statistic for this model, and it shows that model is significant.
+
+**2. c** There is a lot of data in the dataset we don't want in our model. Those include records that do not represent a sale on the open market. There should be some explanation for the 0-square-feet and no-sale-price properties. It would take research and domain knowledge to go further into it.
+
+**3** The model used was appropriate for learning the global patterns, but a local model would better understand the outliers near the bottom and the top of the price range. A non-linear transform on the square-foot variable might make sense intuitively. Due to the neighborhood and category factors, the model is high-dimensional. More data would make it better and give us some more significant estimators on the some of the coefficients.
