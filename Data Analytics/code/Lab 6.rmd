@@ -1,0 +1,65 @@
+---
+output: word_document
+---
+
+# asd
+
+```{r echo=FALSE}
+library(caret)
+library(AppliedPredictiveModeling)
+#library(dplyr)
+
+bank <- read.csv("~/data/bank-full.csv", sep=";")
+attach(bank)
+summary(bank)
+
+hist(bank$age)
+hist(bank$campaign)
+
+# Kernel density plots for mpg
+# grouped by number of gears (indicated by color)
+qplot(bank$y, data=bank, geom="density", alpha=I(.5), 
+      main="Distribution of Gas Milage", xlab="Miles Per Gallon", 
+      ylab="Density")
+
+# Scatterplot of mpg vs. hp for each combination of gears and cylinders
+# in each facet, transmittion type is represented by shape and color
+qplot(hp, mpg, data=mtcars, shape=am, color=am, 
+      facets=gear~cyl, size=I(3),
+      xlab="Horsepower", ylab="Miles per Gallon") 
+
+# Separate regressions of mpg on weight for each number of cylinders
+qplot(wt, mpg, data=mtcars, geom=c("point", "smooth"), 
+      method="lm", formula=y~x, color=cyl, 
+      main="Regression of MPG on Weight", 
+      xlab="Weight", ylab="Miles per Gallon")
+
+# Boxplots of mpg by number of gears 
+# observations (points) are overlayed and jittered
+qplot(bank$y, data=bank, main="Yeses and Nos", xlab='', ylab="number")
+
+fitControl <- trainControl(
+  ## 10-fold CV
+  method = "cv",
+  number = 10,
+  repeats = 5)
+
+set.seed(825)
+boostedLogistic <- train(bank$y ~ ., data = bank,
+                 method = 'LogitBoost',
+                 allowParallel = T,
+                 trControl = fitControl,
+                 ## This last option is actually one
+                 ## for gbm() that passes through
+                 verbose = TRUE)
+boostedLogistic
+
+
+rf <- train(bank$y ~ ., data = bank,
+      method = 'rf',
+      trControl = trainControl(
+      method = "cv",
+      number = 5))
+rf
+
+```
